@@ -5,8 +5,7 @@ const ON_TEXT = 'Raises your hand when 10+ others have theirs up. Lowers when fe
 const OFF_TEXT = 'Disabled — your hand state will not be touched.';
 
 chrome.storage.local.get('enabled', (data) => {
-  // Default true on first install
-  toggle.checked = data.enabled !== false;
+  toggle.checked = data.enabled === true;
   updateStatus(toggle.checked);
 });
 

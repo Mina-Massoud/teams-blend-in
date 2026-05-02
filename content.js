@@ -239,8 +239,7 @@ function stop() {
 }
 
 chrome.storage.local.get('enabled', (data) => {
-  // Default true on first install
-  enabled = data.enabled !== false;
+  enabled = data.enabled === true;
   injectBanner();
   if (enabled) start();
   else updateBanner();
