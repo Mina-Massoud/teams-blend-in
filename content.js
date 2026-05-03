@@ -118,8 +118,12 @@ function isMyHandRaised() {
 }
 
 // Total raised hands visible to the page (includes self).
-// Tries the People button's accessibility label first (works with the
-// roster collapsed), then falls back to counting per-participant badges.
+// Strategy, in order of reliability:
+//   1) People button aria-label "N hands raised" — works with roster closed.
+//   2) Roster panel: count <span id="roster-raise-hand-icon-…"> nodes,
+//      one per raised participant. Reliable when the panel is open.
+//   3) Roster row aria-label fallback (e.g. "…, Hand Raised, Unmuted").
+//   4) Gallery tile badges as a last resort.
 function getTotalRaisedHandCount() {
   const buttons = document.querySelectorAll('button[aria-label]');
   for (const btn of buttons) {
@@ -131,26 +135,36 @@ function getTotalRaisedHandCount() {
     }
   }
 
-  const candidates = document.querySelectorAll('[aria-label], [data-tid]');
-  let count = 0;
-  for (const el of candidates) {
+  const rosterIcons = document.querySelectorAll('[id^="roster-raise-hand-icon-"]');
+  if (rosterIcons.length > 0) return rosterIcons.length;
+
+  const rosterRows = document.querySelectorAll('[data-cid="roster-participant"][aria-label]');
+  if (rosterRows.length > 0) {
+    let rosterCount = 0;
+    for (const row of rosterRows) {
+      const label = (row.getAttribute('aria-label') || '').toLowerCase();
+      if (label.includes('hand raised') || label.includes('hand is raised')) rosterCount++;
+    }
+    if (rosterCount > 0) return rosterCount;
+  }
+
+  const seenTiles = new Set();
+  let galleryCount = 0;
+  const galleryCandidates = document.querySelectorAll(
+    '[data-tid*="raised-hand"], [data-tid*="raisehand-icon"], [aria-label*="hand is raised" i], [aria-label*="raised their hand" i], [aria-label*="has raised" i]'
+  );
+  for (const el of galleryCandidates) {
     if (el.id === 'raisehands-button') continue;
     if (el.getAttribute('data-inp') === 'raisehands-button') continue;
     if (el.closest('#raisehands-button, [data-inp="raisehands-button"]')) continue;
     if (el.closest('[role="tooltip"]')) continue;
 
-    const label = (el.getAttribute('aria-label') || '').toLowerCase();
-    const tid = (el.getAttribute('data-tid') || '').toLowerCase();
-    const looksLikeRaise =
-      label.includes('hand is raised') ||
-      label.includes('raised their hand') ||
-      label.includes('has raised') ||
-      tid.includes('raised-hand') ||
-      tid.includes('raisehand-icon');
-
-    if (looksLikeRaise) count++;
+    const tile = el.closest('[data-tid^="participant-"], [data-cid="roster-participant"]') || el;
+    if (seenTiles.has(tile)) continue;
+    seenTiles.add(tile);
+    galleryCount++;
   }
-  return count;
+  return galleryCount;
 }
 
 function getOtherRaisedHandCount() {
